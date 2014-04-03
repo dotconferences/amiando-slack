@@ -20,7 +20,7 @@ func main() {
 	// http://developers.amiando.com/index.php/Tracking_Webhooks
 	m.Post("/amiando-server-call", func(w http.ResponseWriter, r *http.Request) (int, string) {
 
-		eventIdentifier, paymentDiscountCode, paymentValue, paymentCurrency, email0 := r.FormValue("eventIdentifier"), r.FormValue("paymentDiscountCode"), r.FormValue("paymentValue"), r.FormValue("paymentCurrency"), r.FormValue("ticketEmail(0)")
+		eventIdentifier, paymentDiscountCode, paymentCurrency, email0, ticketCategory0 := r.FormValue("eventIdentifier"), r.FormValue("paymentDiscountCode"), r.FormValue("paymentCurrency"), r.FormValue("ticketEmail0"), r.FormValue("ticketCategory0")
 
 		numberOfTickets, err := strconv.Atoi(r.FormValue("numberOfTickets"))
 		if err != nil {
@@ -28,9 +28,17 @@ func main() {
 			return 500, "Invalid numberOfTickets"
 		}
 
+		paymentValue, err := strconv.Atoi(r.FormValue("paymentValue"))
+		if err != nil {
+			fmt.Println(err)
+			return 500, "Invalid paymentValue"
+		}
+
+		paymentValueFloat := float64(paymentValue) / 100
+
 		payload := make(map[string]string)
 
-		payload["text"] = fmt.Sprintf("SOLD! %vx %v %v (%v%v) to %v", numberOfTickets, eventIdentifier, paymentDiscountCode, paymentValue, paymentCurrency, email0)
+		payload["text"] = fmt.Sprintf("SOLD! %vx %v %v %v (%v %v) to %v", numberOfTickets, eventIdentifier, ticketCategory0, paymentDiscountCode, paymentValueFloat, paymentCurrency, email0)
 		payload["channel"] = os.Getenv("SLACK_CHANNEL")
 		payload["username"] = "amiando"
 
@@ -40,12 +48,12 @@ func main() {
 			return 500, "Invalid payload JSON"
 		}
 
-		fmt.Println("Posting...")
+		fmt.Printf("Posting... %v\n", payload)
 
 		// Finally send the post to Slack
 		resp, err := http.PostForm(os.Getenv("SLACK_URL"), url.Values{"payload": {string(payloadJson)}})
 
-		fmt.Println(resp)
+		fmt.Printf("Slack response: %v\n", resp)
 		if err != nil {
 			fmt.Println(err)
 			return 500, "Invalid post response"
